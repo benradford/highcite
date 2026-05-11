@@ -8,8 +8,8 @@ Benjamin J. Radford feat. Claude Sonnet 4.6
 
 ## Usage
 
-1. Highlight the academic citation on the website. Include highlighting the DOI if available. Works best for APA / MLA / Chicago / Vancouver / IEEE formats.
-2. Right click the highlighted citation and select **Convert to BibTex**.
+1. Highlight the academic citation or DOI on the website. Works best for APA / MLA / Chicago / Vancouver / IEEE formats.
+2. Right click the highlighted citation/DOI and select **Convert to BibTex**.
 3. Paste directly into your .bib file. 
 
 ## Installation
