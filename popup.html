@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HighCite</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 13px;
+      background: #0f1117;
+      color: #e2e8f0;
+      width: 400px;
+      min-height: 200px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px 10px;
+      border-bottom: 1px solid #1e2535;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      font-weight: 700;
+      font-size: 15px;
+      letter-spacing: -0.3px;
+      color: #fff;
+    }
+
+    .logo svg { flex-shrink: 0; }
+
+    .settings-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #64748b;
+      padding: 4px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      transition: color 0.15s, background 0.15s;
+    }
+    .settings-btn:hover { color: #94a3b8; background: #1e2535; }
+
+    .content { padding: 12px 14px; }
+
+    .label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #475569;
+      margin-bottom: 6px;
+    }
+
+    .citation-box {
+      background: #1a1f2e;
+      border: 1px solid #1e2535;
+      border-radius: 8px;
+      padding: 9px 11px;
+      font-size: 12px;
+      color: #94a3b8;
+      line-height: 1.55;
+      min-height: 48px;
+      max-height: 110px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .citation-box.placeholder { color: #334155; font-style: italic; }
+
+    .actions { margin-top: 10px; display: flex; gap: 8px; }
+
+    button {
+      flex: 1;
+      border: none;
+      border-radius: 7px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s, filter 0.15s;
+    }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    button:not(:disabled):hover { filter: brightness(1.1); }
+
+    .btn-primary {
+      background: #3b82f6;
+      color: #fff;
+    }
+
+    .btn-secondary {
+      background: #1e2535;
+      color: #94a3b8;
+      flex: 0 0 auto;
+      padding: 8px 14px;
+    }
+
+    .status {
+      margin-top: 9px;
+      font-size: 11px;
+      padding: 6px 9px;
+      border-radius: 6px;
+      display: none;
+    }
+    .status.show { display: block; }
+    .status.info  { background: #1e293b; color: #60a5fa; }
+    .status.error { background: #1f1315; color: #f87171; }
+    .status.ok    { background: #0f2318; color: #34d399; }
+
+    .result-section { margin-top: 12px; display: none; }
+    .result-section.show { display: block; }
+
+    .result-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 5px;
+    }
+
+    .copy-btn-inline {
+      flex: 0 0 auto;
+      background: #1e2535;
+      border: none;
+      border-radius: 5px;
+      color: #60a5fa;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 9px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .copy-btn-inline:hover { background: #273248; }
+    .copy-btn-inline.copied { color: #34d399; }
+
+    .bibtex-output {
+      background: #0d1117;
+      border: 1px solid #1e2535;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-family: 'SF Mono', 'Cascadia Code', 'Fira Code', monospace;
+      font-size: 11px;
+      line-height: 1.6;
+      color: #a5f3fc;
+      max-height: 200px;
+      overflow-y: auto;
+      white-space: pre;
+      word-break: break-all;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 5px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    footer {
+      border-top: 1px solid #1e2535;
+      padding: 7px 14px;
+      font-size: 10px;
+      color: #334155;
+      display: flex;
+      justify-content: space-between;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+        <rect width="18" height="18" rx="5" fill="#3b82f6"/>
+        <text x="3" y="14" font-size="12" fill="white" font-family="Georgia,serif">"</text>
+      </svg>
+      HighCite
+    </div>
+    <button class="settings-btn" id="optionsBtn" title="Settings">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
+  </header>
+
+  <div class="content">
+    <div class="label">Selected citation</div>
+    <div class="citation-box placeholder" id="citationBox">
+      Highlight a citation on the page, then click Convert.
+    </div>
+
+    <div class="actions">
+      <button class="btn-primary" id="convertBtn" disabled>Convert to BibTeX</button>
+    </div>
+
+    <div class="status" id="status"></div>
+
+    <div class="result-section" id="resultSection">
+      <div class="result-header">
+        <div class="label" style="margin:0">BibTeX</div>
+        <button class="copy-btn-inline" id="copyBtn">Copy</button>
+      </div>
+      <div class="bibtex-output" id="bibtexOutput"></div>
+    </div>
+  </div>
+
+  <footer>
+    <span id="methodLabel"></span>
+    <span>HighCite v2.0</span>
+  </footer>
+
+  <script src="popup.js"></script>
+</body>
+</html>
