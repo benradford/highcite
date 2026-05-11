@@ -1,10 +1,8 @@
 HighCite
 ==================
+*HighCite is a Chrome browser extension for creating paste-able **BibTeX** entries.*
 
-- Benjamin J. Radford  
-- Claude Sonnet 4.6
-
-HighCite is a Chrome browser extension for creating paste-able **BibTeX** entries. 
+Benjamin J. Radford feat. Claude Sonnet 4.6
 
 ![Demonstration of HighCite extension.](images/demo.png "Demonstration of HighCite extension.")
 
