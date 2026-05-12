@@ -1,27 +1,44 @@
-// parser.js — citation text → BibTeX string, no LLM required.
+// parser.js — citation text → BibTeX string.
 //
 // Strategy:
 //   1. If text contains a DOI  → CrossRef REST API (free, no key, covers ~90M records)
-//   2. Otherwise               → local regex parsing (APA, MLA, Chicago, Vancouver, IEEE)
+//   2. If Gemini Nano is enabled and available → on-device LLM parse
+//   3. Otherwise               → local regex parsing (APA, MLA, Chicago, Vancouver, IEEE)
 
 'use strict';
 
 // ─── Public API ──────────────────────────────────────────────────────────────
 
+// Returns { bibtex: string, method: 'crossref' | 'gemini-nano' | 'regex' }
 export async function convertToBibTeX(rawText) {
   const text = normalizeText(rawText);
   const doi  = extractDOI(text);
 
+  // 1. CrossRef
   if (doi) {
     try {
       const email = await getStoredEmail();
-      return await crossRefLookup(doi, email);
+      const bibtex = await crossRefLookup(doi, email);
+      return { bibtex, method: 'crossref' };
     } catch (err) {
-      console.warn('CrossRef lookup failed, falling back to local parse:', err.message);
+      console.warn('CrossRef lookup failed, falling back:', err.message);
     }
   }
 
-  return localParse(text, doi);
+  // 2. Gemini Nano (if enabled in settings)
+  try {
+    const { llmEnabled = true } = await chrome.storage.sync.get('llmEnabled');
+    if (llmEnabled) {
+      const bibtex = await llmParse(text);
+      return { bibtex, method: 'gemini-nano' };
+    }
+  } catch (err) {
+    console.warn('Gemini Nano parse failed, falling back to regex:', err.message);
+  }
+
+  // 3. Regex
+  const { type, key, fields } = localParseFields(text, doi);
+  return { bibtex: toBibTeX(type, key, fields), method: 'regex' };
 }
 
 // ─── Text normalisation ───────────────────────────────────────────────────────
@@ -156,7 +173,7 @@ function normPages(p) {
 
 // ─── Local regex parsing ──────────────────────────────────────────────────────
 
-function localParse(text, knownDoi) {
+function localParseFields(text, knownDoi) {
   const fmt = detectFormat(text);
 
   let result;
@@ -178,7 +195,94 @@ function localParse(text, knownDoi) {
 
   const firstFamily = authorObjs[0]?.family ?? '';
   const key = makeCiteKey(firstFamily || 'Unknown', fields.year ?? '', fields.title ?? '');
-  return toBibTeX(type, key, fields);
+  return { type, key, fields };
+}
+
+function isWeakParse(fields) {
+  return !fields.title && !fields.author;
+}
+
+// ─── Gemini Nano (Chrome built-in LLM) ───────────────────────────────────────
+
+const LLM_RESPONSE_SCHEMA = {
+  type: 'object',
+  properties: {
+    entry_type:  { type: 'string' },
+    author:      { type: 'string' },
+    editor:      { type: 'string' },
+    title:       { type: 'string' },
+    journal:     { type: 'string' },
+    booktitle:   { type: 'string' },
+    year:        { type: 'string' },
+    volume:      { type: 'string' },
+    number:      { type: 'string' },
+    pages:       { type: 'string' },
+    publisher:   { type: 'string' },
+    institution: { type: 'string' },
+    doi:         { type: 'string' },
+    url:         { type: 'string' }
+  },
+  required: ['entry_type', 'title'],
+  additionalProperties: false
+};
+
+const LLM_VALID_TYPES = new Set([
+  'article', 'book', 'inproceedings', 'incollection',
+  'phdthesis', 'techreport', 'misc', 'booklet',
+  'manual', 'mastersthesis', 'proceedings', 'unpublished'
+]);
+
+const LLM_FIELD_KEYS = [
+  'author', 'editor', 'title', 'journal', 'booktitle',
+  'year', 'volume', 'number', 'pages', 'publisher', 'institution', 'doi', 'url'
+];
+
+async function llmParse(text) {
+  // LanguageModel lives on `window` in page contexts and on `self` in service workers.
+  const LM = (typeof LanguageModel !== 'undefined' && LanguageModel)
+          || (typeof self !== 'undefined' && self.LanguageModel);
+  if (!LM) {
+    console.error('[HighCite] LanguageModel API not found in this context');
+    throw new Error('LanguageModel API unavailable');
+  }
+
+  // Chrome ≤137 returns 'available'; Chrome 138+ returns 'readily-available'.
+  const availability = await LM.availability({
+    expectedInputs:  [{ type: 'text', languages: ['en'] }],
+    expectedOutputs: [{ type: 'text', languages: ['en'] }]
+  }).catch(() => LM.availability());   // fall back to no-arg form if options unsupported
+  console.info('[HighCite] Gemini Nano availability:', availability);
+
+  if (availability === 'unavailable') throw new Error('Gemini Nano unavailable on this device');
+  if (availability === 'downloading') throw new Error('Gemini Nano model is still downloading');
+
+  const session = await LM.create();
+  try {
+    const prompt =
+      'Extract bibliographic fields from this academic citation.\n' +
+      'Use entry_type: article, book, inproceedings, incollection, phdthesis, techreport, or misc.\n' +
+      'Format authors as "Family, Given and Family, Given".\n' +
+      'Use double hyphen in page ranges (e.g. 100--200).\n\n' +
+      `Citation: ${text}`;
+
+    const raw  = await session.prompt(prompt, { responseConstraint: LLM_RESPONSE_SCHEMA });
+    const data = JSON.parse(raw);
+
+    if (!data.title) throw new Error('no title in LLM response');
+
+    const type   = LLM_VALID_TYPES.has(data.entry_type) ? data.entry_type : 'misc';
+    const fields = {};
+    for (const k of LLM_FIELD_KEYS) {
+      if (data[k]) fields[k] = String(data[k]);
+    }
+    if (fields.doi && !fields.url) fields.url = `https://doi.org/${fields.doi}`;
+
+    const firstFamily = (fields.author ?? '').split(' and ')[0].split(',')[0].trim() || 'Unknown';
+    const key = makeCiteKey(firstFamily, fields.year ?? '', fields.title ?? '');
+    return toBibTeX(type, key, fields);
+  } finally {
+    session.destroy();
+  }
 }
 
 // ── Format detection ─────────────────────────────────────────────────────────

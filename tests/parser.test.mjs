@@ -15,10 +15,11 @@ import assert from 'node:assert/strict';
 import { convertToBibTeX } from '../parser.js';
 
 /**
- * Parse a BibTeX string into a plain object for easy field assertions.
- * Handles both {string value} and bare numeric values.
+ * Parse a BibTeX string (or convertToBibTeX result object) into a plain object
+ * for easy field assertions. Handles both {string value} and bare numeric values.
  */
-function bf(bibtex) {
+function bf(input) {
+  const bibtex = (input && typeof input === 'object') ? input.bibtex : input;
   const out = {};
   const hdr = bibtex.match(/^@(\w+)\{(\w+),/);
   if (hdr) { out._type = hdr[1]; out._key = hdr[2]; }

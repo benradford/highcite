@@ -124,6 +124,60 @@
     .toast.show  { display: block; }
     .toast.ok    { background: #0f2318; color: #34d399; }
     .toast.error { background: #1f1315; color: #f87171; }
+
+    .toggle-row {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .toggle-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #e2e8f0;
+      margin-bottom: 6px;
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 38px;
+      height: 22px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: #2d3748;
+      border-radius: 22px;
+      transition: background 0.2s;
+    }
+    .slider::before {
+      content: '';
+      position: absolute;
+      width: 16px;
+      height: 16px;
+      left: 3px;
+      top: 3px;
+      background: #64748b;
+      border-radius: 50%;
+      transition: transform 0.2s, background 0.2s;
+    }
+    .switch input:checked + .slider { background: #3b82f6; }
+    .switch input:checked + .slider::before { transform: translateX(16px); background: #fff; }
+
+    .privacy-note {
+      margin-top: 10px;
+      padding: 8px 10px;
+      background: #0d1f13;
+      border: 1px solid #1a3a25;
+      border-radius: 6px;
+      font-size: 11px;
+      color: #4ade80;
+      line-height: 1.5;
+    }
   </style>
 </head>
 <body>
@@ -139,11 +193,34 @@
 
     <h2>How it works</h2>
     <div class="how-it-works">
-      <strong>If the citation contains a DOI</strong> — HighCite queries the
+      <strong>1. DOI detected</strong> — queries the
       <a href="https://www.crossref.org" target="_blank" style="color:#3b82f6;text-decoration:none">CrossRef</a>
-      REST API (free, no account needed) and builds a precise BibTeX entry from the publisher metadata.<br><br>
-      <strong>Otherwise</strong> — it parses the text locally using format-aware rules for
-      APA, MLA, Chicago, Vancouver, and IEEE citations.
+      REST API (free, no account needed) for precise publisher metadata.<br><br>
+      <strong>2. Gemini Nano</strong> — Chrome's built-in on-device AI model parses the citation text.
+      Can be disabled below.<br><br>
+      <strong>3. Regex fallback</strong> — format-aware rules for APA, MLA, Chicago, Vancouver, and IEEE.
+    </div>
+
+    <h2>Gemini Nano <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#334155">(optional)</span></h2>
+    <div class="card">
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-title">Use on-device AI for parsing</div>
+          <div class="hint">
+            When enabled, HighCite tries Chrome's built-in
+            <strong style="color:#94a3b8">Gemini Nano</strong> model before falling back to regex rules.
+            Requires Chrome 138+ with the model downloaded.
+          </div>
+          <div class="privacy-note">
+            &#x1F512; All processing is local. Citation text is never sent to Google,
+            Anthropic, or any other cloud provider.
+          </div>
+        </div>
+        <label class="switch" title="Enable Gemini Nano parsing">
+          <input type="checkbox" id="llmToggle" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
     </div>
 
     <h2>CrossRef polite pool <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#334155">(optional)</span></h2>

@@ -1,11 +1,13 @@
 const emailInput = document.getElementById('crossrefEmail');
+const llmToggle  = document.getElementById('llmToggle');
 const saveBtn    = document.getElementById('saveBtn');
 const clearBtn   = document.getElementById('clearBtn');
 const toast      = document.getElementById('toast');
 
 async function load() {
-  const { crossrefEmail = '' } = await chrome.storage.sync.get('crossrefEmail');
-  emailInput.value = crossrefEmail;
+  const { crossrefEmail = '', llmEnabled = true } = await chrome.storage.sync.get(['crossrefEmail', 'llmEnabled']);
+  emailInput.value  = crossrefEmail;
+  llmToggle.checked = llmEnabled;
 }
 
 function showToast(msg, type = 'ok') {
@@ -13,6 +15,11 @@ function showToast(msg, type = 'ok') {
   toast.className = `toast show ${type}`;
   setTimeout(() => { toast.className = 'toast'; }, 3000);
 }
+
+llmToggle.addEventListener('change', async () => {
+  await chrome.storage.sync.set({ llmEnabled: llmToggle.checked });
+  showToast(llmToggle.checked ? 'Gemini Nano enabled.' : 'Gemini Nano disabled.');
+});
 
 saveBtn.addEventListener('click', async () => {
   const email = emailInput.value.trim();

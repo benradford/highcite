@@ -6,6 +6,12 @@ const bibtexOutput  = document.getElementById('bibtexOutput');
 const copyBtn       = document.getElementById('copyBtn');
 const methodLabel   = document.getElementById('methodLabel');
 
+const METHOD_LABELS = {
+  'crossref':    'Via CrossRef',
+  'regex':       'Local parse',
+  'gemini-nano': 'Gemini Nano'
+};
+
 let currentBibTeX = '';
 let activeTabId   = null;
 
@@ -13,7 +19,7 @@ async function init() {
   const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
   activeTabId = tab?.id;
 
-  const { lastBibTeX, lastCitation } = await chrome.storage.local.get(['lastBibTeX', 'lastCitation']);
+  const { lastBibTeX, lastCitation, lastMethod } = await chrome.storage.local.get(['lastBibTeX', 'lastCitation', 'lastMethod']);
 
   if (activeTabId) {
     try {
@@ -23,10 +29,10 @@ async function init() {
         setCitationText(text);
       } else if (lastCitation) {
         setCitationText(lastCitation);
-        showResult(lastBibTeX, true);
+        showResult(lastBibTeX, lastMethod, true);
       }
     } catch (_) {
-      if (lastCitation) { setCitationText(lastCitation); showResult(lastBibTeX, true); }
+      if (lastCitation) { setCitationText(lastCitation); showResult(lastBibTeX, lastMethod, true); }
     }
   }
 }
@@ -46,16 +52,14 @@ function clearStatus() {
   statusEl.className = 'status';
 }
 
-function showResult(bibtex, fromCache = false) {
+function showResult(bibtex, method = null, fromCache = false) {
   if (!bibtex) return;
   currentBibTeX = bibtex;
   bibtexOutput.textContent = bibtex;
   resultSection.classList.add('show');
-  // Detect whether CrossRef or local parse was used
-  const usedCrossRef = bibtex.includes('doi') || bibtex.includes('url');
   methodLabel.textContent = fromCache
     ? 'Last result'
-    : (usedCrossRef ? 'Via CrossRef' : 'Local parse');
+    : (METHOD_LABELS[method] ?? 'Local parse');
 }
 
 convertBtn.addEventListener('click', async () => {
@@ -74,7 +78,7 @@ convertBtn.addEventListener('click', async () => {
   try {
     const response = await sendMessage({ action: 'convertToBibTeX', text, tabId: activeTabId });
     if (!response.success) throw new Error(response.error);
-    showResult(response.bibtex);
+    showResult(response.bibtex, response.method);
     setStatus('BibTeX copied to clipboard!', 'ok');
   } catch (err) {
     setStatus(err.message, 'error');
