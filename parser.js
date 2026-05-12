@@ -190,11 +190,14 @@ function detectFormat(text) {
   // IEEE: starts with "F. Lastname" or "F. L. Lastname", has quoted title
   if (/^[A-Z]\.\s+[A-Z]/.test(text) && /"[^"]+"/.test(text)) return 'ieee';
 
-  // MLA: quoted title + "vol. N" + "no. N"
-  if (/"[^"]+"\s*[,.]/.test(text) && /\bvol\.\s*\d+/i.test(text)) return 'mla';
+  // Chicago: quoted title + "no. N (YYYY)" — check before MLA; period may be inside quotes
+  if (/"[^"]+"/.test(text) && /no\.\s*\d+\s*\(\d{4}\)/i.test(text)) return 'chicago';
 
-  // Chicago: quoted title + "no. N (YYYY)"
-  if (/"[^"]+"\s*[,.]/.test(text) && /no\.\s*\d+\s*\(\d{4}\)/i.test(text)) return 'chicago';
+  // MLA: quoted title + "vol. N" — period may be inside quotes (American style)
+  if (/"[^"]+"/.test(text) && /\bvol\.\s*\d+/i.test(text)) return 'mla';
+
+  // Chicago no-volume: "Journal (YYYY): pages" — must be caught before APA's (YYYY) check
+  if (/"[^"]+"/.test(text) && /\(\d{4}\)\s*:/.test(text)) return 'chicago';
 
   // APA: (YYYY) or (YYYYa) shortly after an author block
   if (/\(\d{4}[a-z]?\)/.test(text)) return 'apa';
@@ -263,7 +266,7 @@ function parseMLA(text) {
   if (titleM) fields.title = strip(titleM[1]);
 
   const authorRaw  = text.split(/"[^"]+"/).shift()?.trim().replace(/[.,]$/, '') ?? '';
-  const authorObjs = authorRaw ? [parseSingleInverted(authorRaw)] : [];
+  const authorObjs = authorRaw ? parseInvertedFirstAuthors(authorRaw) : [];
   if (authorObjs.length) fields.author = fmtAuthors(authorObjs);
 
   const jrnM  = text.match(/"[^"]+"\.?\s+([^,]+?),\s+vol\./i);
@@ -290,7 +293,7 @@ function parseChicago(text) {
   if (titleM) fields.title = strip(titleM[1]);
 
   const authorRaw  = text.split(/"[^"]+"/).shift()?.trim().replace(/[.,]$/, '') ?? '';
-  const authorObjs = authorRaw ? [parseSingleInverted(authorRaw)] : [];
+  const authorObjs = authorRaw ? parseInvertedFirstAuthors(authorRaw) : [];
   if (authorObjs.length) fields.author = fmtAuthors(authorObjs);
 
   const afterTitle = text.split(/"[^"]+"\.?\s*/)[1] ?? '';
@@ -465,6 +468,48 @@ function toBibTeX(type, key, fields) {
 // ─── Small utilities ──────────────────────────────────────────────────────────
 
 function strip(s)  { return s.trim().replace(/[.,]$/, ''); }
+
+// Parse "Last, First[, First2 Last2[, and First3 Last3]]" (Chicago/MLA multi-author).
+// First author is inverted; subsequent authors are in natural order.
+function parseInvertedFirstAuthors(raw) {
+  raw = raw.replace(/[.,]\s*$/, '').trim();
+
+  // Peel off the last author introduced by "and"
+  let lastPart = '';
+  const andM = raw.match(/,?\s*\band\b\s+(.+)$/i);
+  if (andM) {
+    lastPart = andM[1].trim();
+    raw = raw.slice(0, raw.length - andM[0].length).trim();
+  }
+
+  // "Reidinger, Verena, Lucas Leemann"
+  // parts[0] = family of first author, parts[1] = given, parts[2..] = extra authors
+  const parts = raw.split(/,\s*/);
+  const authors = [];
+
+  if (parts.length >= 2) {
+    authors.push({ family: parts[0].trim(), given: parts[1].trim() });
+    for (let i = 2; i < parts.length; i++) {
+      const name = parts[i].trim();
+      if (!name) continue;
+      const sp = name.lastIndexOf(' ');
+      authors.push(sp >= 0
+        ? { family: name.slice(sp + 1), given: name.slice(0, sp) }
+        : { family: name, given: '' });
+    }
+  } else if (parts[0]) {
+    authors.push({ family: parts[0].trim(), given: '' });
+  }
+
+  if (lastPart) {
+    const sp = lastPart.lastIndexOf(' ');
+    authors.push(sp >= 0
+      ? { family: lastPart.slice(sp + 1), given: lastPart.slice(0, sp) }
+      : { family: lastPart, given: '' });
+  }
+
+  return authors;
+}
 
 function parseSingleInverted(text) {
   text = text.trim().replace(/\.$/, '');
