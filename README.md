@@ -25,5 +25,5 @@ Benjamin J. Radford feat. Claude Sonnet 4.6
 ## How It Works
 
 1. HighCite first looks for a DOI. If it finds one, it queries the Crossref API for a full bibliographic entry.
-2. Failing that, HighCite uses the Gemini Nano language model built in to Chrome to parse the highlighted citation and produce a bibtex record.
+2. Failing that, HighCite uses the Gemini Nano language model built into Chrome to parse the highlighted citation and produce a bibtex record.
 3. If Gemini Nano fails to load, HighCite will use regular expressions to parse several common bibliographic formats.
