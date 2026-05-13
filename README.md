@@ -1,4 +1,4 @@
-# ![logo](icons/icon48.png) HighCite
+# ![logo](icons/icon32.png) HighCite
 
 *HighCite is a Chrome browser extension for creating paste-able **BibTeX** entries.*
 
