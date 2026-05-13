@@ -261,7 +261,7 @@ async function llmParse(text) {
     const prompt =
       'Extract bibliographic fields from this academic citation.\n' +
       'Use entry_type: article, book, inproceedings, incollection, phdthesis, techreport, or misc.\n' +
-      'Format authors as "Family, Given and Family, Given".\n' +
+      'Include ALL authors in the author field; do not omit any. Format authors as "Family, Given and Family, Given".\n' +
       'Use double hyphen in page ranges (e.g. 100--200).\n\n' +
       `Citation: ${text}`;
 
@@ -275,6 +275,7 @@ async function llmParse(text) {
     for (const k of LLM_FIELD_KEYS) {
       if (data[k]) fields[k] = String(data[k]);
     }
+    if (fields.author) fields.author = fields.author.replace(/\s*;\s*/g, ' and ');
     if (fields.doi && !fields.url) fields.url = `https://doi.org/${fields.doi}`;
 
     const firstFamily = (fields.author ?? '').split(' and ')[0].split(',')[0].trim() || 'Unknown';
