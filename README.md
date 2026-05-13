@@ -1,5 +1,5 @@
-HighCite
-==================
+# ![logo](icons/icon128.png) HighCite
+
 *HighCite is a Chrome browser extension for creating paste-able **BibTeX** entries.*
 
 Benjamin J. Radford feat. Claude Sonnet 4.6
