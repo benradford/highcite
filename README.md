@@ -27,3 +27,10 @@ Benjamin J. Radford feat. Claude Sonnet 4.6
 1. HighCite first looks for a DOI. If it finds one, it queries the Crossref API for a full bibliographic entry.
 2. Failing that, HighCite uses the Gemini Nano language model built into Chrome to parse the highlighted citation and produce a bibtex record.
 3. If Gemini Nano fails to load, HighCite will use regular expressions to parse several common bibliographic formats.
+
+## Tricks
+
+- You can highlight an entire news article (cmd+A) and use HighCite to produce a BibTeX entry for it. In general, the LLM-based parser will do a good job of identifying the authors, title, publisher, date, URL, and often more.
+- You can disable the LLM-based parser in the settings, though this will result in degraded performance for all citations lacking a DOI.
+- If you have a DOI string, you only need to highlight the DOI string for HighCite to work. You do not need to highlight the entire reference.
+- HighCite will work inside of PDFs open in your Chrome browser. 
