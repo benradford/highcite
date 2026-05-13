@@ -24,37 +24,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === 'getSelectedText') {
-    chrome.tabs.sendMessage(message.tabId, { action: 'getSelectedText' }, response => {
-      sendResponse(chrome.runtime.lastError ? { text: '' } : response);
+    chrome.scripting.executeScript({
+      target: { tabId: message.tabId },
+      func: () => window.getSelection().toString().trim()
+    }).then(results => {
+      sendResponse({ text: results?.[0]?.result ?? '' });
+    }).catch(() => {
+      sendResponse({ text: '' });
     });
     return true;
   }
 });
 
 async function runConversion(citationText, tabId) {
-  const processingId = `hc-processing-${Date.now()}`;
-  notify('Converting…', 'Looking up citation…', processingId);
   showIndicatorInTab(tabId);
 
   try {
     let bibtex, method;
-    try {
-      ({ bibtex, method } = await convertToBibTeX(citationText));
-    } catch (err) {
-      chrome.notifications.clear(processingId);
-      notify('Conversion failed', err.message);
-      throw err;
-    }
-
-    chrome.notifications.clear(processingId);
-
-    try {
-      await writeClipboard(tabId, bibtex);
-      notify('Copied!', 'BibTeX entry copied to clipboard.');
-    } catch (_) {
-      notify('Converted', 'Open the popup to copy the result manually.');
-    }
-
+    ({ bibtex, method } = await convertToBibTeX(citationText));
+    await writeClipboard(tabId, bibtex).catch(() => {});
     await chrome.storage.local.set({ lastBibTeX: bibtex, lastCitation: citationText, lastMethod: method });
     return { bibtex, method };
   } finally {
@@ -126,11 +114,3 @@ async function writeClipboard(tabId, text) {
   if (!results?.[0]?.result) throw new Error('Clipboard write failed');
 }
 
-function notify(title, message, id) {
-  chrome.notifications.create(id ?? `hc-${Date.now()}`, {
-    type: 'basic',
-    iconUrl: 'icons/icon48.png',
-    title: `HighCite — ${title}`,
-    message
-  });
-}
