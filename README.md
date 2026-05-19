@@ -15,6 +15,12 @@ Benjamin J. Radford feat. Claude Sonnet 4.6
 
 ## Installation
 
+### From the Chrome Web Store
+
+Install with one click from the Chrome Web Store: [HighCite Link](https://chromewebstore.google.com/detail/fmlpbcempoodfhcceadnffbifnefgkpo?utm_source=item-share-cb)
+
+### From Source (this repository)
+
 1. Clone this repository to your local computer.
 2. In Chrome's address bar, navigate to: `chrome://extensions`
 3. In the upper right corner, turn on **Developer mode**.
